@@ -2,8 +2,8 @@
 from sense_hat import SenseHat
 import time
 
-OFFSET_LEFT = 1
-OFFSET_TOP = 2
+OFFSET_LEFT = 0
+OFFSET_TOP = 3
 
 NUMS = [1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1,  # 0
         0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,  # 1
@@ -16,8 +16,7 @@ NUMS = [1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1,  # 0
         1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1,  # 8
         1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1]  # 9
 
-sense = SenseHat()Displays a two-digits positive number (0-99)
-
+sense = SenseHat()
 
 def show_digit(val, xd, yd, r, g, b):
     """Displays a single digit (0-9)"""
@@ -34,6 +33,7 @@ def show_number(val, r, g, b):
     """Displays a two-digits positive number (0-99)"""
     assert isinstance(val, int)
     assert 0 <= val <= 99
+
     abs_val = abs(val)
     tens = abs_val // 10
     units = abs_val % 10
