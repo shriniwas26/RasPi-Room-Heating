@@ -17,7 +17,7 @@ NUMS = [1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1,  # 0
         1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1]  # 9
 
 sense = SenseHat()
-
+sense.set_rotation(270)
 def show_digit(val, xd, yd, r, g, b):
     """Displays a single digit (0-9)"""
     assert isinstance(val, int)
