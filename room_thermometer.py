@@ -9,9 +9,10 @@ import Adafruit_DHT
 import datetime
 import time
 
-CYCLE_SLEEP = 5
+CYCLE_SLEEP = 1
 DHT_SENSOR = Adafruit_DHT.DHT22
 DHT_PIN = 4
+
 
 def setup_logger():
     logger = logging.getLogger()
@@ -42,9 +43,11 @@ def main():
     sense.set_rotation(270)
     sense.clear()
     logger = setup_logger()
+    dn = sense_hat_display_number.NumberDisplay(rotation=270)
     while True:
         sense.clear()
-        sense.show_letter("R", [50, 50, 50])
+        sense.show_letter("R", text_colour=[50]*3)
+        t1 = time.time()
 
         """ Read from the sensors on Sense Hat """
         hum = sense.get_humidity()
@@ -66,16 +69,22 @@ def main():
             logger.info("-" * 50)
             continue
 
+
+        delta = CYCLE_SLEEP - (time.time() - t1)
+        logger.debug("Sleeping for {:.4f} seconds".format(delta))
+        if delta > 0:
+            time.sleep(delta)
+        sense.clear()
+
         logger.info("-" * 50)
         # Display on the Sense Hat
-        sense.clear()
-        sense_hat_display_number.show_number(round(temp), 50, 0, 0)
-        sleep(CYCLE_SLEEP/2)
-        sense_hat_display_number.show_number(round(hum), 0, 0, 50)
-        sleep(CYCLE_SLEEP/2)
-        sense_hat_display_number.show_number(
+        dn.show_number(round(temp), 50, 0, 0)
+        sleep(CYCLE_SLEEP)
+        dn.show_number(round(hum), 50, 0, 50)
+        sleep(CYCLE_SLEEP)
+        dn.show_number(
             round(temperature_dht22), 0, 50, 0)
-        sleep(CYCLE_SLEEP/2)
+        sleep(CYCLE_SLEEP)
 
 
 if __name__ == "__main__":
