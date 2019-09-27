@@ -69,6 +69,8 @@ def main():
             logger.info("-" * 50)
             continue
 
+        with open("/tmp/current_temperature.txt", "w") as fh:
+            fh.write("{:.2f}\n".format(temperature_dht22))
 
         delta = CYCLE_SLEEP - (time.time() - t1)
         logger.debug("Sleeping for {:.4f} seconds".format(delta))
