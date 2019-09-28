@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from sense_hat import SenseHat
-from time import sleep
+import time
 import sense_hat_display_number
 import logging
 import logging.handlers
@@ -9,7 +9,10 @@ import Adafruit_DHT
 import datetime
 import time
 
-CYCLE_SLEEP = 1
+CYCLE_SLEEP = 2
+INTENSITY = 50
+
+# DHT Sensor Config
 DHT_SENSOR = Adafruit_DHT.DHT22
 DHT_PIN = 4
 
@@ -32,7 +35,7 @@ def setup_logger():
 
     # Setup ch
     ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
+    ch.setLevel(logging.INFO)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
@@ -44,50 +47,70 @@ def main():
     sense.clear()
     logger = setup_logger()
     dn = sense_hat_display_number.NumberDisplay(rotation=270)
+    color_temp = [INTENSITY, 0, 0]
+    color_hum  = [0, INTENSITY, 0]
+    square_shape = [(x, y) for x in range(2) for y in range(2)]
     while True:
-        sense.clear()
-        sense.show_letter("R", text_colour=[50]*3)
-        t1 = time.time()
-
-        """ Read from the sensors on Sense Hat """
-        hum = sense.get_humidity()
-        temp = sense.get_temperature()
-        logger.info(
-            "[SenseHat] Temperature = {:.1f} C, Humidity = {:.0f} %".format(temp, hum))
-
-        pressure = sense.get_pressure()
-        logger.info("[SenseHat] Pressure = {:.0f} millibar".format(pressure))
-
+        t1 = time.time() # To compensate for time lost in sensor and file I/O
         """ Read from the DHT22 sensor """
         humidity_dht22, temperature_dht22 = Adafruit_DHT.read_retry(
             DHT_SENSOR, DHT_PIN)
-        if humidity_dht22 is not None and temperature_dht22 is not None:
-            logger.info("[DHT22] Temperature = {:0.1f} C, Humidity = {:0.0f} %".format(
-                temperature_dht22, humidity_dht22))
-        else:
-            logger.warning("Failed to retrieve data from DHT22 sensor")
-            logger.info("-" * 50)
-            continue
+        logger.info("[DHT22] Temperature = {:0.1f} C".format(
+            temperature_dht22))
+        logger.info("[DHT22] Humidity    = {:0.0f} %".format(humidity_dht22))
 
-        with open("/tmp/current_temperature.txt", "w") as fh:
-            fh.write("{:.2f}\n".format(temperature_dht22))
+        # Read from the sensors on Sense-Hat
+        humidity_sense = sense.get_humidity()
+        temperature_sense = sense.get_temperature()
+        pressure = sense.get_pressure()
+        logger.info("[SenseHat] Temperature = {:.1f} C".format(temperature_sense))
+        logger.info("[SenseHat] Humidity    = {:.0f} %".format(humidity_sense))
+        logger.info("[SenseHat] Pressure    = {:.0f} millibar".format(pressure))
 
-        delta = CYCLE_SLEEP - (time.time() - t1)
-        logger.debug("Sleeping for {:.4f} seconds".format(delta))
-        if delta > 0:
-            time.sleep(delta)
-        sense.clear()
+        # Write date to temp files (for use by other programs)
+        with open("/tmp/temperature_dht22.txt", "w") as fh:
+            fh.write("{}\n".format(temperature_dht22))
+
+        with open("/tmp/temperature_sense_hat.txt", "w") as fh:
+            fh.write("{}\n".format(temperature_sense))
 
         logger.info("-" * 50)
-        # Display on the Sense Hat
-        dn.show_number(round(temp), 50, 0, 0)
-        sleep(CYCLE_SLEEP)
-        dn.show_number(round(hum), 50, 0, 50)
-        sleep(CYCLE_SLEEP)
-        dn.show_number(
-            round(temperature_dht22), 0, 50, 0)
-        sleep(CYCLE_SLEEP)
+
+        # Only sleep for (cycle time - time spent in IO),
+        # so that transitions appear smooth
+        delta = CYCLE_SLEEP - (time.time() - t1)
+        logger.info("Sleeping for {:.4f} seconds".format(delta))
+        time.sleep(max(0, delta))
+
+        # Display Sense-Hat Temperature/Humidity
+        sense.clear()
+        for x, y in square_shape:
+            sense.set_pixel(x, y, INTENSITY, INTENSITY, INTENSITY)
+        dn.show_number(round(temperature_sense), *color_temp)
+        time.sleep(CYCLE_SLEEP)
+        dn.show_number(round(humidity_sense), *color_hum)
+        time.sleep(CYCLE_SLEEP)
+
+        # Display DHT22 Temperature/Humidity
+        sense.clear()
+        for x, y in square_shape:
+            sense.set_pixel(7-x, y, INTENSITY, INTENSITY, INTENSITY)
+        dn.show_number(round(temperature_dht22), *color_temp)
+        time.sleep(CYCLE_SLEEP)
+        dn.show_number(round(humidity_dht22), *color_hum)
+
 
 
 if __name__ == "__main__":
-    main()
+    error_count = 0
+    while True:
+        if error_count > 5:
+            logging.error("Too many errors, Sleeping...")
+            sleep(15 * 60)
+        try:
+            main()
+            error_count = 0
+        except Exception as e:
+            error_count += 1
+            logging.error("Exception {} occured".format(e))
+            logging.warn("Retrying...")

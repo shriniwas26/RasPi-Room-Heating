@@ -48,7 +48,7 @@ def main():
             time.sleep(SLEEP_MINUTES * 60)
         try:
             logger.info("Reading DHT22 sensor...")
-            with open("/tmp/current_temperature.txt") as f:
+            with open("/tmp/temperature_dht22.txt") as f:
                 line = f.readlines()[0]
                 dht22_temp = float(line)
             logger.info("DHT22 Sensor reports: {} °C".format(dht22_temp))
