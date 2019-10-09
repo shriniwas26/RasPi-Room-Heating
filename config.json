@@ -1,0 +1,184 @@
+{
+    "holidays": [
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        },
+        {
+            "start": null,
+            "end": null,
+            "temp": null
+        }
+    ],
+    "temperatures": {
+        "target_temp_h": 22.0,
+        "manual_temp": 22.0,
+        "target_temp_l": 10.0,
+        "offset_temp": -5.0,
+        "window_open_detection": 6,
+        "window_open_minutes": 10
+    },
+    "lcd_timer": {
+        "preload": 30,
+        "current": 0
+    },
+    "days": [
+        [
+            {
+                "start": "00:10:00",
+                "end": "09:00:00"
+            },
+            {
+                "start": "17:00:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ],
+        [
+            {
+                "start": "00:10:00",
+                "end": "09:00:00"
+            },
+            {
+                "start": "17:00:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ],
+        [
+            {
+                "start": "00:10:00",
+                "end": "09:00:00"
+            },
+            {
+                "start": "17:00:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ],
+        [
+            {
+                "start": "00:10:00",
+                "end": "09:00:00"
+            },
+            {
+                "start": "17:00:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ],
+        [
+            {
+                "start": "00:10:00",
+                "end": "09:00:00"
+            },
+            {
+                "start": "17:00:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ],
+        [
+            {
+                "start": "00:10:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ],
+        [
+            {
+                "start": "00:10:00",
+                "end": "23:50:00"
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            },
+            {
+                "start": null,
+                "end": null
+            }
+        ]
+    ]
+}
