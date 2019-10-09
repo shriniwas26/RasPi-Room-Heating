@@ -42,10 +42,9 @@
         }
     ],
     "temperatures": {
-        "target_temp_h": 22.0,
-        "manual_temp": 22.0,
+        "target_temp_h": 21.0,
+        "manual_temp": 21.0,
         "target_temp_l": 10.0,
-        "offset_temp": -5.0,
         "window_open_detection": 6,
         "window_open_minutes": 10
     },

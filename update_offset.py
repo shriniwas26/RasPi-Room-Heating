@@ -10,10 +10,14 @@ import pprint
 import datetime as dt
 
 # First part of the actual command:
-# `cometblue -f json device -p 1762 80:30:DC:E9:4E:50 get temperatures`
+# "cometblue -f json device -p 1762 80:30:DC:E9:4E:50" + " get temperatures"
 BT_MAC_ADDR = "80:30:DC:E9:4E:50"
-BASE_COMMAND = "cometblue -f json device -p 1762 {}".format(BT_MAC_ADDR)
-SLEEP_MINUTES = 10
+BASE_COMMAND_WRITE = "cometblue device -p 1762 {}".format(BT_MAC_ADDR)
+BASE_COMMAND_READ = BASE_COMMAND_WRITE.replace(
+    "cometblue", "cometblue -f json")  # Read values in JSON format
+
+# Sleep time between temperature readings
+SLEEP_MINUTES = 15
 
 
 def setup_logger():
@@ -38,7 +42,7 @@ def setup_logger():
 
     # Setup console logger
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.ERROR)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
@@ -51,6 +55,7 @@ def run_command(command):
     if result.returncode != 0:
         logger.error("Command '{}' failed!".format(command))
         raise RuntimeError("Command '{}' failed!".format(command))
+    time.sleep(1)
     return result.stdout
 
 
@@ -80,23 +85,40 @@ def get_slots_for_day(all_active_timeslots, config_date):
 
 
 def timeslot_to_str(ts):
-    return "{} - {}".format(ts["start"], ts["end"])
+    return "{} -> {}".format(ts["start"], ts["end"])
 
 
 def main():
     setup_logger()
     logger = logging.getLogger("root")
+    config_file = os.path.split(os.path.abspath(__file__))[0] + "/config.json"
+    logger.info("Config file: {}".format(config_file))
+    _result_stdout = run_command(
+        BASE_COMMAND_WRITE + " restore " + config_file)
+    logger.info("Config written successfully")
+
     while True:
+        # Log battery level
+        logger.info("Getting battery information from thermostat...")
+        result_stdout = run_command(BASE_COMMAND_READ + " get battery")
+        battery_level = result_stdout.decode("utf-8")
+        logger.info("Battery: {} %".format(battery_level))
+        # Ensure correct time is set on cometblue
+        logger.info("Setting time on cometblue...")
+        _result_stdout = run_command(BASE_COMMAND_WRITE + " set datetime")
+        logger.info("Time set successfully")
+
         logger.info("Reading active timeslots from cometblue...")
-        result_stdout = run_command(BASE_COMMAND + " get days")
+        result_stdout = run_command(BASE_COMMAND_READ + " get days")
         all_active_timeslots = json.loads(result_stdout)
         today = dt.date.today()
         tomorrow = dt.date.today() + dt.timedelta(days=1)
         active_timeslots = get_slots_for_day(
-            all_active_timeslots, today) + get_slots_for_day(all_active_timeslots, tomorrow)
+            all_active_timeslots, today) + get_slots_for_day(all_active_timeslots, tomorrow)[:1]
 
         active_timeslots_str = [timeslot_to_str(ts) for ts in active_timeslots]
-        logger.info("Active timeslots : {}".format(pprint.pformat(active_timeslots_str)))
+        logger.info("Active timeslots: \n{}".format(
+            pprint.pformat(active_timeslots_str)))
 
         current_timeslot = get_current_timeslot(active_timeslots)
         if current_timeslot is None:
@@ -106,7 +128,6 @@ def main():
                                        if timeslot["start"] > dt.datetime.now()]
             next_timeslot = min(timeslot_starting_times)
             time_to_sleep = next_timeslot - dt.datetime.now().replace(microsecond=0)
-            time_to_sleep = time_to_sleep - dt.timedelta
             logger.info(
                 "Next active timeslot is starts at: {}".format(next_timeslot))
             logger.info(
@@ -124,29 +145,22 @@ def main():
 def monitoring_loop(end_time):
     logger = logging.getLogger("root")
     logger.info("Starting loop, stopping time: {} ...".format(str(end_time)))
-    # Log battery level
-    logger.info("Getting battery information from thermostat...")
-    result_stdout = run_command(BASE_COMMAND + " get battery")
-    battery_level = result_stdout.decode("utf-8")
-    logger.info("Battery: {} %".format(battery_level))
-    # Ensure correct time is set on cometblue
-    logger.info("Setting time on cometblue...")
-    _result_stdout = run_command(BASE_COMMAND + " set datetime")
-    logger.info("Time set successfully")
 
     while dt.datetime.now() < end_time:
         """ Step (1) """
-        sensor_data_file = "/tmp/temperature_dht22.txt"
+        sensor_data_file = "/tmp/dht22_reading.txt"
         with open(sensor_data_file) as f:
-            logger.info("Read DHT22 sensor file '{}'".format(sensor_data_file))
-            line = f.readlines()[0]
-            dht22_temp = float(line)
+            logger.info(
+                "Read DHT22 sensor file: '{}'".format(sensor_data_file))
+            lines = f.readlines()
+            dht22_temp = float(lines[0])
+            dht22_hum = float(lines[1])
         logger.info(
-            "Room temperature sensor reports: {:.2f} C".format(dht22_temp))
+            "DHT22 sensor reports: Temp = {:.2f} C, Hum = {:.2f} %".format(dht22_temp, dht22_hum))
 
         """ Step (2) """
         logger.info("Reading temperature from cometblue...")
-        result_stdout = run_command(BASE_COMMAND + " get temperatures")
+        result_stdout = run_command(BASE_COMMAND_READ + " get temperatures")
         cometblue_temperatures = json.loads(result_stdout)
         logger.info("All temperatures: \n{}".format(
             pprint.pformat(cometblue_temperatures)))
@@ -162,8 +176,9 @@ def monitoring_loop(end_time):
         if cometblue_temperatures["offset_temp"] != correct_offset:
             logger.info("Setting correct offset...")
             _result_stdout = run_command(
-                BASE_COMMAND + " set temperatures --temp-offset {}".format(correct_offset))
-            result_stdout = run_command(BASE_COMMAND + " get temperatures")
+                BASE_COMMAND_WRITE + " set temperatures --temp-offset {}".format(correct_offset))
+            result_stdout = run_command(
+                BASE_COMMAND_READ + " get temperatures")
             cometblue_temperatures = json.loads(result_stdout)
             logger.info("Checking if offset is correct...")
             assert correct_offset == cometblue_temperatures["offset_temp"]

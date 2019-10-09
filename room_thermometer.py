@@ -35,7 +35,7 @@ def setup_logger():
 
     # Setup ch
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.ERROR)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
@@ -57,7 +57,7 @@ def main():
             DHT_SENSOR, DHT_PIN)
         logger.info("[DHT22] Temperature = {:0.1f} C".format(
             temperature_dht22))
-        logger.info("[DHT22] Humidity    = {:0.0f} %".format(humidity_dht22))
+        logger.info("[DHT22] Humidity    = {:0.1f} %".format(humidity_dht22))
 
         # Read from the sensors on Sense-Hat
         humidity_sense = sense.get_humidity()
@@ -68,8 +68,8 @@ def main():
         logger.info("[SenseHat] Pressure    = {:.0f} millibar".format(pressure))
 
         # Write date to temp files (for use by other programs)
-        with open("/tmp/temperature_dht22.txt", "w") as fh:
-            fh.write("{}\n".format(temperature_dht22))
+        with open("/tmp/dht22_reading.txt", "w") as fh:
+            fh.write("{:.2f}\n{:.2f}\n".format(temperature_dht22, humidity_dht22))
 
         with open("/tmp/temperature_sense_hat.txt", "w") as fh:
             fh.write("{}\n".format(temperature_sense))
@@ -102,15 +102,4 @@ def main():
 
 
 if __name__ == "__main__":
-    error_count = 0
-    while True:
-        if error_count > 5:
-            logging.error("Too many errors, Sleeping...")
-            sleep(15 * 60)
-        try:
-            main()
-            error_count = 0
-        except Exception as e:
-            error_count += 1
-            logging.error("Exception {} occured".format(e))
-            logging.warn("Retrying...")
+    main()
