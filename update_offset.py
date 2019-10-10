@@ -55,14 +55,12 @@ def run_command(command):
     if result.returncode != 0:
         logger.error("Command '{}' failed!".format(command))
         raise RuntimeError("Command '{}' failed!".format(command))
-    time.sleep(1)
     return result.stdout
 
 
 def get_current_timeslot(active_timeslots):
-    dt_now = dt.datetime.now()
     for timeslot in active_timeslots:
-        if timeslot["start"] <= dt_now <= timeslot["end"]:
+        if timeslot["start"] <= dt.datetime.now() <= timeslot["end"]:
             return timeslot
     return None
 
@@ -103,43 +101,46 @@ def main():
         result_stdout = run_command(BASE_COMMAND_READ + " get battery")
         battery_level = result_stdout.decode("utf-8")
         logger.info("Battery: {} %".format(battery_level))
+
         # Ensure correct time is set on cometblue
         logger.info("Setting time on cometblue...")
         _result_stdout = run_command(BASE_COMMAND_WRITE + " set datetime")
         logger.info("Time set successfully")
 
+        # Read timeslots
         logger.info("Reading active timeslots from cometblue...")
         result_stdout = run_command(BASE_COMMAND_READ + " get days")
         all_active_timeslots = json.loads(result_stdout)
         today = dt.date.today()
         tomorrow = dt.date.today() + dt.timedelta(days=1)
-        active_timeslots = get_slots_for_day(
-            all_active_timeslots, today) + get_slots_for_day(all_active_timeslots, tomorrow)[:1]
-
-        active_timeslots_str = [timeslot_to_str(ts) for ts in active_timeslots]
+        # Add one extra slot from next day
+        active_timeslots = \
+            get_slots_for_day(all_active_timeslots, today) + \
+            get_slots_for_day(all_active_timeslots, tomorrow)[:1]
         logger.info("Active timeslots: \n{}".format(
-            pprint.pformat(active_timeslots_str)))
+            pprint.pformat(list(map(timeslot_to_str, active_timeslots)))))
 
         current_timeslot = get_current_timeslot(active_timeslots)
         if current_timeslot is None:
             # Find immediate next timeslot, and sleep for the difference
-            timeslot_starting_times = [timeslot["start"]
-                                       for timeslot in active_timeslots
-                                       if timeslot["start"] > dt.datetime.now()]
-            next_timeslot = min(timeslot_starting_times)
-            time_to_sleep = next_timeslot - dt.datetime.now().replace(microsecond=0)
+            upcoming_timeslots = filter(
+                lambda ts: ts["start"] > dt.datetime.now(), active_timeslots)
+            upcoming_starting_times = map(
+                lambda ts: ts["start"], upcoming_timeslots)
+            next_start_time = min(upcoming_starting_times)
+            time_to_sleep = next_start_time - dt.datetime.now().replace(microsecond=0)
             logger.info(
-                "Next active timeslot is starts at: {}".format(next_timeslot))
+                "Next active timeslot is starts at: {}".format(next_start_time))
             logger.info(
                 " Sleeping for {} ...".format(time_to_sleep))
             time.sleep(time_to_sleep.total_seconds())
         else:
-            current_timeslot_str = "{} - {}".format(
-                current_timeslot["start"], current_timeslot["end"])
+            # Start the monitor loop
             logger.info("Current active timeslot is: [{}]".format(
-                current_timeslot_str))
+                timeslot_to_str(current_timeslot)))
             monitoring_loop(current_timeslot["end"])
-            logger.info("Timeslot [{}] ended".format(current_timeslot_str))
+            logger.info("Timeslot [{}] ended".format(
+                timeslot_to_str(current_timeslot)))
 
 
 def monitoring_loop(end_time):
