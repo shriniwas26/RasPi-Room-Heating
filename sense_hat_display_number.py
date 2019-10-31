@@ -40,8 +40,7 @@ class NumberDisplay(object):
         abs_val = abs(val)
         tens = abs_val // 10
         units = abs_val % 10
-        if (abs_val > 9):
-            self.show_digit(tens, self.OFFSET_LEFT, self.OFFSET_TOP, r, g, b)
+        self.show_digit(tens, self.OFFSET_LEFT, self.OFFSET_TOP, r, g, b)
         self.show_digit(units, self.OFFSET_LEFT+4, self.OFFSET_TOP, r, g, b)
 
 
