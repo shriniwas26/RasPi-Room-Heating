@@ -42,9 +42,10 @@
         }
     ],
     "temperatures": {
-        "target_temp_h": 22.5,
-        "manual_temp": 22.5,
-        "target_temp_l": 4.0,
+        "target_temp_h": 22.0,
+        "target_temp_l": 10.0,
+        "manual_temp": 22.0,
+        "temp_offset": -6.0,
         "window_open_detection": 6,
         "window_open_minutes": 10
     },
@@ -55,11 +56,13 @@
     "days": [
         [
             {
+                "_day": "Monday",
                 "start": "00:10:00",
                 "end": "09:00:00"
             },
             {
-                "start": "16:30:00",
+                "_day": "Monday",
+                "start": "17:00:00",
                 "end": "23:50:00"
             },
             {
@@ -73,11 +76,13 @@
         ],
         [
             {
+                "_day": "Tuesday",
                 "start": "00:10:00",
                 "end": "09:00:00"
             },
             {
-                "start": "16:30:00",
+                "_day": "Tuesday",
+                "start": "17:00:00",
                 "end": "23:50:00"
             },
             {
@@ -91,11 +96,13 @@
         ],
         [
             {
+                "_day": "Wednesday",
                 "start": "00:10:00",
                 "end": "09:00:00"
             },
             {
-                "start": "16:30:00",
+                "_day": "Wednesday",
+                "start": "17:00:00",
                 "end": "23:50:00"
             },
             {
@@ -109,11 +116,13 @@
         ],
         [
             {
+                "_day": "Thursday",
                 "start": "00:10:00",
                 "end": "09:00:00"
             },
             {
-                "start": "16:30:00",
+                "_day": "Thursday",
+                "start": "17:00:00",
                 "end": "23:50:00"
             },
             {
@@ -127,11 +136,13 @@
         ],
         [
             {
+                "_day": "Friday",
                 "start": "00:10:00",
                 "end": "09:00:00"
             },
             {
-                "start": "16:30:00",
+                "_day": "Friday",
+                "start": "17:00:00",
                 "end": "23:50:00"
             },
             {
@@ -145,6 +156,7 @@
         ],
         [
             {
+                "_day": "Saturday",
                 "start": "00:10:00",
                 "end": "23:50:00"
             },
@@ -163,6 +175,7 @@
         ],
         [
             {
+                "_day": "Sunday",
                 "start": "00:10:00",
                 "end": "23:50:00"
             },
