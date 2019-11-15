@@ -126,6 +126,11 @@ def main():
 
         current_timeslot = get_current_timeslot(active_timeslots)
         if current_timeslot is None:
+            # Set the offset temperature to 0'C and setpoint to 10'C
+            _result_stdout = run_command(
+                BASE_COMMAND_WRITE + " set temperatures --temp-offset 0")
+            _result_stdout = run_command(
+                BASE_COMMAND_WRITE + " set temperatures --temp-target-high 10")
             # Find immediate next timeslot, and sleep for the difference
             upcoming_timeslots = filter(
                 lambda ts: ts["start"] > dt.datetime.now(), active_timeslots)

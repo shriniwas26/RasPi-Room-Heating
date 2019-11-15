@@ -1,0 +1,3 @@
+# Sleep time between temperature readings
+SLEEP_MINUTES = 10
+BT_MAC_ADDR = "80:30:DC:E9:4E:50"

@@ -42,16 +42,16 @@
         }
     ],
     "temperatures": {
-        "target_temp_h": 22.0,
-        "target_temp_l": 10.0,
-        "manual_temp": 22.0,
-        "temp_offset": -6.0,
+        "target_temp_h": 21.0,
+        "manual_temp": 21.0,
+        "target_temp_l": 6.0,
+        "temp_offset": 0.0,
         "window_open_detection": 6,
         "window_open_minutes": 10
     },
     "lcd_timer": {
         "preload": 30,
-        "current": 0
+        "current": 30
     },
     "days": [
         [
@@ -118,12 +118,12 @@
             {
                 "_day": "Thursday",
                 "start": "00:10:00",
-                "end": "09:00:00"
+                "end": "23:50:00"
             },
             {
                 "_day": "Thursday",
-                "start": "17:00:00",
-                "end": "23:50:00"
+                "start": null,
+                "end": null
             },
             {
                 "start": null,
