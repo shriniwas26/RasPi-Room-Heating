@@ -35,7 +35,7 @@ def setup_logger():
         dirname + "/logs/update_offset.log",
         when='midnight',
         backupCount=200)
-    fh_info.setLevel(logging.INFO)
+    fh_info.setLevel(logging.DEBUG)
     fh_info.setFormatter(formatter)
     logger.addHandler(fh_info)
 
@@ -52,14 +52,15 @@ def run_command(command):
     logger.debug("Running command: '{}'".format(command))
     result = subprocess.run([command], stdout=subprocess.PIPE, shell=True)
     if result.returncode != 0:
-        logger.error("Command '{}' failed!".format(command))
-        raise RuntimeError("Command '{}' failed!".format(command))
+        error_message = "Command '{}' failed!".format(command)
+        logger.error(error_message)
+        raise RuntimeError(error_message)
     return result.stdout
 
 
 def get_current_timeslot(active_timeslots):
     for timeslot in active_timeslots:
-        if timeslot["start"] <= dt.datetime.now() <= timeslot["end"]:
+        if timeslot["begin"] < dt.datetime.now() < timeslot["end"]:
             return timeslot
     return None
 
@@ -68,29 +69,29 @@ def get_slots_for_day(all_active_timeslots, date_x):
     active_timeslots = all_active_timeslots[date_x.weekday()]
     # Filter out invalid timeslots: null and empty ones
     valid_timeslots = list(
-        filter(lambda t: (t["start"] != t["end"] != None), active_timeslots))
+        filter(lambda t: (t["begin"] != t["end"] != None), active_timeslots))
 
-    def convert_timeslot(timeslot):
+    def timeslot_to_datetime(timeslot):
         formatted_timeslot = {}
-        for key, value in timeslot.items():
+        for key in ["begin", "end"]:
+            value = timeslot[key]
             time_x = dt.datetime.strptime(value, "%H:%M:%S").time()
             date_time = dt.datetime.combine(date_x, time_x)
             formatted_timeslot[key] = date_time
         return formatted_timeslot
-    return list(map(convert_timeslot, valid_timeslots))
+    return list(map(timeslot_to_datetime, valid_timeslots))
 
 
 def timeslot_to_str(ts):
-    return "{} -> {}".format(ts["start"], ts["end"])
+    return "{} -> {}".format(ts["begin"], ts["end"])
 
 
-def write_good_config():
+def restore_config():
     logger = logging.getLogger("root")
     config_file = os.path.split(os.path.abspath(__file__))[0] + "/config.json"
     logger.info("Config file: {}".format(config_file))
-    _result_stdout = run_command(
-        BASE_COMMAND_WRITE + " restore " + config_file)
-    logger.info("Config written successfully")
+    run_command(BASE_COMMAND_WRITE + " restore " + config_file)
+    logger.info("Config restored successfully")
 
 
 def main():
@@ -98,17 +99,17 @@ def main():
     logger = logging.getLogger("root")
     while True:
         # Write "good" config
-        write_good_config()
+        restore_config()
 
         # Log battery level
         logger.info("Getting battery information from thermostat...")
         result_stdout = run_command(BASE_COMMAND_READ + " get battery")
         battery_level = result_stdout.decode("utf-8")
-        logger.info("Battery: {} %".format(battery_level))
+        logger.info("Battery = {} %".format(battery_level))
 
         # Ensure correct time is set on cometblue
         logger.info("Setting time on cometblue...")
-        _result_stdout = run_command(BASE_COMMAND_WRITE + " set datetime")
+        run_command(BASE_COMMAND_WRITE + " set datetime")
         logger.info("Time set successfully")
 
         # Read timeslots
@@ -126,32 +127,38 @@ def main():
 
         current_timeslot = get_current_timeslot(active_timeslots)
         if current_timeslot is None:
-            # Set the offset temperature to 0'C and setpoint to 10'C
-            _result_stdout = run_command(
-                BASE_COMMAND_WRITE + " set temperatures --temp-offset 0")
-            _result_stdout = run_command(
-                BASE_COMMAND_WRITE + " set temperatures --temp-target-high 10")
-            # Find immediate next timeslot, and sleep for the difference
+            # Step(1): Set the offset temperature to 0'C and setpoint to 10'C
+            run_command(BASE_COMMAND_WRITE +
+                        " set temperatures --temp-offset 0")
+            run_command(BASE_COMMAND_WRITE +
+                        " set temperatures --temp-target-high 10")
+            run_command(BASE_COMMAND_WRITE +
+                        " set temperatures --temp-manual 10")
+
+            # Step(2): Find immediate next timeslot
             upcoming_timeslots = filter(
-                lambda ts: ts["start"] > dt.datetime.now(), active_timeslots)
+                lambda ts: ts["begin"] > dt.datetime.now(), active_timeslots)
             upcoming_starting_times = map(
-                lambda ts: ts["start"], upcoming_timeslots)
+                lambda ts: ts["begin"], upcoming_timeslots)
             next_start_time = min(upcoming_starting_times)
+
+            # Step(3): Sleep for the difference
             time_to_sleep = next_start_time - dt.datetime.now().replace(microsecond=0)
             logger.info(
-                "Next active timeslot is starts at: {}".format(next_start_time))
+                "Next active timeslot starts at: {}".format(next_start_time))
             logger.info(
                 "Sleeping for {} ...".format(time_to_sleep))
             time.sleep(time_to_sleep.total_seconds())
+
         else:
-            # Start the monitor loop
+            # Start the monitoring loop
             logger.info("Current active timeslot is: [{}]".format(
                 timeslot_to_str(current_timeslot)))
             monitoring_loop(current_timeslot)
             logger.info("Timeslot [{}] ended".format(
                 timeslot_to_str(current_timeslot)))
-            # After the while loop, write good config again
-            write_good_config()
+            # After the while loop, write the JSON config again
+            restore_config()
 
 
 def monitoring_loop(current_timeslot):
@@ -187,8 +194,9 @@ def monitoring_loop(current_timeslot):
 
         if cometblue_temperatures["offset_temp"] != correct_offset:
             logger.info("Setting correct offset...")
-            _result_stdout = run_command(
-                BASE_COMMAND_WRITE + " set temperatures --temp-offset {}".format(correct_offset))
+            run_command(
+                BASE_COMMAND_WRITE +
+                " set temperatures --temp-offset {}".format(correct_offset))
             result_stdout = run_command(
                 BASE_COMMAND_READ + " get temperatures")
             cometblue_temperatures = json.loads(result_stdout)
