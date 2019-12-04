@@ -60,7 +60,7 @@ def run_command(command):
 
 def get_current_timeslot(active_timeslots):
     for timeslot in active_timeslots:
-        if timeslot["begin"] < dt.datetime.now() < timeslot["end"]:
+        if timeslot["start"] < dt.datetime.now() < timeslot["end"]:
             return timeslot
     return None
 
@@ -69,11 +69,11 @@ def get_slots_for_day(all_active_timeslots, date_x):
     active_timeslots = all_active_timeslots[date_x.weekday()]
     # Filter out invalid timeslots: null and empty ones
     valid_timeslots = list(
-        filter(lambda t: (t["begin"] != t["end"] != None), active_timeslots))
+        filter(lambda t: (t["start"] != t["end"] != None), active_timeslots))
 
     def timeslot_to_datetime(timeslot):
         formatted_timeslot = {}
-        for key in ["begin", "end"]:
+        for key in ["start", "end"]:
             value = timeslot[key]
             time_x = dt.datetime.strptime(value, "%H:%M:%S").time()
             date_time = dt.datetime.combine(date_x, time_x)
@@ -83,7 +83,7 @@ def get_slots_for_day(all_active_timeslots, date_x):
 
 
 def timeslot_to_str(ts):
-    return "{} -> {}".format(ts["begin"], ts["end"])
+    return "{} -> {}".format(ts["start"], ts["end"])
 
 
 def restore_config():
@@ -137,9 +137,9 @@ def main():
 
             # Step(2): Find immediate next timeslot
             upcoming_timeslots = filter(
-                lambda ts: ts["begin"] > dt.datetime.now(), active_timeslots)
+                lambda ts: ts["start"] > dt.datetime.now(), active_timeslots)
             upcoming_starting_times = map(
-                lambda ts: ts["begin"], upcoming_timeslots)
+                lambda ts: ts["start"], upcoming_timeslots)
             next_start_time = min(upcoming_starting_times)
 
             # Step(3): Sleep for the difference
@@ -183,13 +183,12 @@ def monitoring_loop(current_timeslot):
         cometblue_temperatures = json.loads(result_stdout)
         logger.info("All temperatures: \n{}".format(
             pprint.pformat(cometblue_temperatures)))
-        cometblue_temp = float(cometblue_temperatures["current_temp"])
-        logger.info("Cometblue reports: {} C".format(cometblue_temp))
+        logger.info("Cometblue reports: {} C".format(
+            cometblue_temperatures["current_temp"]))
 
         """ Step (3) """
-        correct_offset_raw = dht22_temp - cometblue_temp
-        # Round to nearest 0.5
-        correct_offset = round(correct_offset_raw * 2) / 2
+        correct_offset = round(
+            dht22_temp - cometblue_temperatures["current_temp"])
         logger.info("Correct offset is: {} C".format(correct_offset))
 
         if cometblue_temperatures["offset_temp"] != correct_offset:
