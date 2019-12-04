@@ -85,7 +85,7 @@ class Thermometer(object):
                         self.temperature_dht22, self.humidity_dht22))
             time.sleep(SENSING_DELAY)
 
-    def main(self):
+    def display_sense_hat(self):
         sense = SenseHat()
         sense.set_rotation(270)
         sense.clear()
@@ -93,11 +93,6 @@ class Thermometer(object):
         color_temp = [INTENSITY, 0, 0]
         color_hum = [0, INTENSITY, 0]
         color_pre = [0, 0, INTENSITY]
-        measure_threads = [threading.Thread(target=f) for f in [
-            self.measure_dht22, self.measure_sense_hat]]
-
-        for t in measure_threads:
-            t.start()
 
         def display_square(x_offset):
             square_shape = [(x, y) for x in range(2) for y in range(2)]
@@ -107,13 +102,6 @@ class Thermometer(object):
                                 INTENSITY, INTENSITY, INTENSITY)
 
         while True:
-            print("Looping!")
-            thread_status = [t.isAlive() for t in measure_threads]
-
-            if not all(thread_status):
-                self.logger.error("Something crashed!")
-                os._exit(1)
-
             # Display Sense-Hat Temperature/Humidit
             sense.clear()
             display_square(x_offset=0)
@@ -140,6 +128,22 @@ class Thermometer(object):
                 round(self.humidity_dht22), *color_hum)
             time.sleep(CYCLE_SLEEP)
 
+    def main(self):
+        app_functions = [
+            self.measure_dht22,
+            self.measure_sense_hat,
+            self.display_sense_hat
+        ]
+        app_threads = [threading.Thread(target=f) for f in app_functions]
+        for t in app_threads:
+            t.start()
+
+        while True:
+            time.sleep(1)
+            for t in app_threads:
+                if not t.is_alive():
+                    self.logger.error("Thread {} crashed. Exiting".format(t.getName))
+                    os._exit(1)
 
 if __name__ == "__main__":
     t = Thermometer()
