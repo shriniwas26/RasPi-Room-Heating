@@ -9,13 +9,13 @@ import datetime
 import time
 import threading
 
-CYCLE_SLEEP = 1
-SENSING_DELAY = 15
-INTENSITY = 50
-
+APP_DEBUG = False
 
 class Thermometer(object):
     def __init__(self):
+        self.CYCLE_SLEEP = 1
+        self.SENSING_DELAY = 15
+        self.INTENSITY = 50
         self.temperature_dht22 = 0
         self.temperature_sense = 0
         self.humidity_dht22 = 0
@@ -35,14 +35,18 @@ class Thermometer(object):
         # Setup file handler
         dirname, _filename = os.path.split(os.path.abspath(__file__))
         fh_info = logging.handlers.TimedRotatingFileHandler(
-            dirname + "/logs/room_weather.log", when='midnight', backupCount=50)
+            dirname + "/logs/room_weather.log", when='midnight', backupCount=1000)
         fh_info.setLevel(logging.INFO)
         fh_info.setFormatter(formatter)
         self.logger.addHandler(fh_info)
 
-        # Setup ch
+        # Setup console handler
         ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
+        if APP_DEBUG:
+            ch.setLevel(logging.DEBUG)
+        else:
+            ch.setLevel(logging.ERROR)
+
         ch.setFormatter(formatter)
         self.logger.addHandler(ch)
 
@@ -63,7 +67,7 @@ class Thermometer(object):
                 # Write date to temp files (for use by other programs)
                 with open("/tmp/temperature_sense_hat.txt", "w") as fh:
                     fh.write("{}\n".format(self.temperature_sense))
-            time.sleep(SENSING_DELAY)
+            time.sleep(self.SENSING_DELAY)
 
     def measure_dht22(self):
         import Adafruit_DHT
@@ -75,31 +79,31 @@ class Thermometer(object):
                 self.logger.info("Taking measurements from DHT22")
                 self.humidity_dht22, self.temperature_dht22 = Adafruit_DHT.read_retry(
                     DHT_SENSOR, DHT_PIN)
-                self.logger.info("[DHT22]    Temperature = {:0.1f} C".format(
+                self.logger.info("[DHT22] Temperature = {:0.1f} C".format(
                     self.temperature_dht22))
-                self.logger.info("[DHT22]    Humidity = {:0.1f} %".format(
+                self.logger.info("[DHT22] Humidity = {:0.1f} %".format(
                     self.humidity_dht22))
                 # Write date to temp files (for use by other programs)
                 with open("/tmp/dht22_reading.txt", "w") as fh:
                     fh.write("{:.2f}\n{:.2f}\n".format(
                         self.temperature_dht22, self.humidity_dht22))
-            time.sleep(SENSING_DELAY)
+            time.sleep(self.SENSING_DELAY)
 
     def display_sense_hat(self):
         sense = SenseHat()
         sense.set_rotation(270)
         sense.clear()
         number_display = sense_hat_display_number.NumberDisplay(rotation=270)
-        color_temp = [INTENSITY, 0, 0]
-        color_hum = [0, INTENSITY, 0]
-        color_pre = [0, 0, INTENSITY]
+        color_temp = [self.INTENSITY, 0, 0]
+        color_hum = [0, self.INTENSITY, 0]
+        color_pre = [0, 0, self.INTENSITY]
 
         def display_square(x_offset):
             square_shape = [(x, y) for x in range(2) for y in range(2)]
             for x, y in square_shape:
                 assert x + x_offset < 8
                 sense.set_pixel(x + x_offset, y,
-                                INTENSITY, INTENSITY, INTENSITY)
+                                self.INTENSITY, self.INTENSITY, self.INTENSITY)
 
         while True:
             # Display Sense-Hat Temperature/Humidit
@@ -108,13 +112,13 @@ class Thermometer(object):
 
             number_display.show_number(
                 round(self.temperature_sense), *color_temp)
-            time.sleep(CYCLE_SLEEP)
+            time.sleep(self.CYCLE_SLEEP)
 
             number_display.show_number(round(self.humidity_sense), *color_hum)
-            time.sleep(CYCLE_SLEEP)
+            time.sleep(self.CYCLE_SLEEP)
 
             number_display.show_number(round(self.pressure) % 100, *color_pre)
-            time.sleep(CYCLE_SLEEP)
+            time.sleep(self.CYCLE_SLEEP)
 
             # Display DHT22 Temperature/Humidity
             sense.clear()
@@ -122,17 +126,17 @@ class Thermometer(object):
 
             number_display.show_number(
                 round(self.temperature_dht22), *color_temp)
-            time.sleep(CYCLE_SLEEP)
+            time.sleep(self.CYCLE_SLEEP)
 
             number_display.show_number(
                 round(self.humidity_dht22), *color_hum)
-            time.sleep(CYCLE_SLEEP)
+            time.sleep(self.CYCLE_SLEEP)
 
     def main(self):
         app_functions = [
             self.measure_dht22,
-            self.measure_sense_hat,
-            self.display_sense_hat
+            # self.measure_sense_hat,
+            # self.display_sense_hat
         ]
         app_threads = [threading.Thread(target=f) for f in app_functions]
         for t in app_threads:
@@ -140,10 +144,16 @@ class Thermometer(object):
 
         while True:
             time.sleep(1)
+            all_running = True
             for t in app_threads:
                 if not t.is_alive():
-                    self.logger.error("Thread {} crashed. Exiting".format(t.getName))
-                    os._exit(1)
+                    self.logger.error("Thread {} crashed".format(t.getName))
+                    all_running = False
+
+            if not all_running:
+                self.logger.error("One or more threds crashed")
+                os._exit(1)
+
 
 if __name__ == "__main__":
     t = Thermometer()
