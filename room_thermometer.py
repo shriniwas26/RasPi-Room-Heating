@@ -113,8 +113,8 @@ class Thermometer(object):
                 self.INTENSITY = 50
 
             color_temp = [self.INTENSITY, 0, 0]
-            color_hum = [0, self.INTENSITY, 0]
-            color_pre = [0, 0, self.INTENSITY]
+            color_pre = [0, self.INTENSITY, 0]
+            color_hum = [0, 0, self.INTENSITY]
 
             # Display Sense-Hat Temperature/Humidit
             sense.clear()
