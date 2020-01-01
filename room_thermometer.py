@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-from sense_hat import SenseHat
 import time
-import sense_hat_display_number
 import logging
 import logging.handlers
 import os
-import datetime
 import time
 import threading
-
+from datetime import datetime as dt
 APP_DEBUG = False
+
 
 class Thermometer(object):
     def __init__(self):
@@ -51,6 +49,8 @@ class Thermometer(object):
         self.logger.addHandler(ch)
 
     def measure_sense_hat(self):
+        from sense_hat import SenseHat
+
         sense = SenseHat()
         while True:
             with self.sensor_lock:
@@ -65,12 +65,13 @@ class Thermometer(object):
                 self.logger.info(
                     "[SenseHat] Pressure = {:.1f} millibar".format(self.pressure))
                 # Write date to temp files (for use by other programs)
-                with open("/tmp/temperature_sense_hat.txt", "w") as fh:
+                with open("/tmp/sense_hat_reading.txt", "w") as fh:
                     fh.write("{}\n".format(self.temperature_sense))
             time.sleep(self.SENSING_DELAY)
 
     def measure_dht22(self):
         import Adafruit_DHT
+
         # DHT Sensor Config
         DHT_SENSOR = Adafruit_DHT.DHT22
         DHT_PIN = 4
@@ -90,14 +91,13 @@ class Thermometer(object):
             time.sleep(self.SENSING_DELAY)
 
     def display_sense_hat(self):
+        from sense_hat import SenseHat
+        import sense_hat_display_number
+
         sense = SenseHat()
         sense.set_rotation(270)
         sense.clear()
         number_display = sense_hat_display_number.NumberDisplay(rotation=270)
-        color_temp = [self.INTENSITY, 0, 0]
-        color_hum = [0, self.INTENSITY, 0]
-        color_pre = [0, 0, self.INTENSITY]
-
         def display_square(x_offset):
             square_shape = [(x, y) for x in range(2) for y in range(2)]
             for x, y in square_shape:
@@ -106,6 +106,16 @@ class Thermometer(object):
                                 self.INTENSITY, self.INTENSITY, self.INTENSITY)
 
         while True:
+            time_now = dt.now()
+            if time_now.hour <= 6:
+                self.INTENSITY = 0
+            else:
+                self.INTENSITY = 50
+
+            color_temp = [self.INTENSITY, 0, 0]
+            color_hum = [0, self.INTENSITY, 0]
+            color_pre = [0, 0, self.INTENSITY]
+
             # Display Sense-Hat Temperature/Humidit
             sense.clear()
             display_square(x_offset=0)
@@ -132,12 +142,31 @@ class Thermometer(object):
                 round(self.humidity_dht22), *color_hum)
             time.sleep(self.CYCLE_SLEEP)
 
+    def display_grove_lcd(self):
+        import grove_rgb_lcd as grl
+        grl.setRGB(r=0, g=0, b=127)
+        grl.setText("")
+        while True:
+            animation_chars = ['_', '|']
+            for i in range(len(animation_chars)):
+                s1 = "Tmp = {:.1f} C {}".format(self.temperature_dht22, animation_chars[i])
+                s2 = "Hum = {:.1f} %".format(self.humidity_dht22)
+                assert len(s1) <= 16
+                assert len(s2) <= 16
+                grl.setText_norefresh(s1 + "\n" + s2)
+                time.sleep(0.5)
+
     def main(self):
         app_functions = [
             self.measure_dht22,
-            # self.measure_sense_hat,
-            # self.display_sense_hat
+            self.display_grove_lcd
         ]
+        # app_functions = [
+        #     self.measure_dht22,
+        #     self.measure_sense_hat,
+        #     self.display_sense_hat
+        # ]
+
         app_threads = [threading.Thread(target=f) for f in app_functions]
         for t in app_threads:
             t.start()
