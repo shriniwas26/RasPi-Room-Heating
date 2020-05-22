@@ -5,13 +5,31 @@ import logging.handlers
 import os
 import time
 import threading
+import sqlite3
 from datetime import datetime as dt
 APP_DEBUG = False
 
 
+def write_to_db(table_name, temperature, humidity):
+    dirname, _filename = os.path.split(os.path.abspath(__file__))
+    conn = sqlite3.connect(dirname + '/room_temperature.db')
+    c = conn.cursor()
+
+    c.execute("""CREATE TABLE IF NOT EXISTS {}
+        (datetime text, temperature real, humidity real)""".format(
+        table_name))
+
+    now_dt = dt.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO {} VALUES ('{}', '{:.2f}', '{:.2f}')".format(
+        table_name, now_dt, temperature, humidity))
+
+    conn.commit()
+    conn.close()
+
+
 class Thermometer(object):
     def __init__(self):
-        self.CYCLE_SLEEP = 1
+        self.CYCLE_SLEEP = 2
         self.SENSING_DELAY = 15
         self.INTENSITY = 50
         self.temperature_dht22 = 0
@@ -33,7 +51,10 @@ class Thermometer(object):
         # Setup file handler
         dirname, _filename = os.path.split(os.path.abspath(__file__))
         fh_info = logging.handlers.TimedRotatingFileHandler(
-            dirname + "/logs/room_weather.log", when='midnight', backupCount=1000)
+            dirname + "/logs/room_weather.log",
+            when='midnight',
+            backupCount=1000
+        )
         fh_info.setLevel(logging.INFO)
         fh_info.setFormatter(formatter)
         self.logger.addHandler(fh_info)
@@ -88,6 +109,8 @@ class Thermometer(object):
                 with open("/tmp/dht22_reading.txt", "w") as fh:
                     fh.write("{:.2f}\n{:.2f}\n".format(
                         self.temperature_dht22, self.humidity_dht22))
+                write_to_db("dht_22", self.temperature_dht22,
+                            self.humidity_dht22)
             time.sleep(self.SENSING_DELAY)
 
     def display_sense_hat(self):
@@ -98,6 +121,10 @@ class Thermometer(object):
         sense.set_rotation(270)
         sense.clear()
         number_display = sense_hat_display_number.NumberDisplay(rotation=270)
+        color_temp = [self.INTENSITY, 0, 0]
+        color_pre = [0, self.INTENSITY, 0]
+        color_hum = [0, 0, self.INTENSITY]
+
         def display_square(x_offset):
             square_shape = [(x, y) for x in range(2) for y in range(2)]
             for x, y in square_shape:
@@ -106,28 +133,32 @@ class Thermometer(object):
                                 self.INTENSITY, self.INTENSITY, self.INTENSITY)
 
         while True:
-            time_now = dt.now()
-            if time_now.hour <= 6:
-                self.INTENSITY = 0
-            else:
-                self.INTENSITY = 50
+            display_status = False
+            for event in sense.stick.get_events():
+                self.logger.info("The joystick was {} {}".format(
+                    event.action, event.direction))
+                if event.action == "pressed":
+                    display_status ^= 1
 
-            color_temp = [self.INTENSITY, 0, 0]
-            color_pre = [0, self.INTENSITY, 0]
-            color_hum = [0, 0, self.INTENSITY]
+            sense.clear()
+
+            if not display_status:
+                time.sleep(self.CYCLE_SLEEP)
+                continue
 
             # Display Sense-Hat Temperature/Humidit
-            sense.clear()
             display_square(x_offset=0)
 
             number_display.show_number(
                 round(self.temperature_sense), *color_temp)
             time.sleep(self.CYCLE_SLEEP)
 
-            number_display.show_number(round(self.humidity_sense), *color_hum)
+            number_display.show_number(
+                round(self.humidity_sense), *color_hum)
             time.sleep(self.CYCLE_SLEEP)
 
-            number_display.show_number(round(self.pressure) % 100, *color_pre)
+            number_display.show_number(
+                round(self.pressure) % 100, *color_pre)
             time.sleep(self.CYCLE_SLEEP)
 
             # Display DHT22 Temperature/Humidity
@@ -149,7 +180,8 @@ class Thermometer(object):
         while True:
             animation_chars = ['_', '|']
             for i in range(len(animation_chars)):
-                s1 = "Tmp = {:.1f} C {}".format(self.temperature_dht22, animation_chars[i])
+                s1 = "Tmp = {:.1f} C {}".format(
+                    self.temperature_dht22, animation_chars[i])
                 s2 = "Hum = {:.1f} %".format(self.humidity_dht22)
                 assert len(s1) <= 16
                 assert len(s2) <= 16
@@ -157,15 +189,15 @@ class Thermometer(object):
                 time.sleep(0.5)
 
     def main(self):
-        app_functions = [
-            self.measure_dht22,
-            self.display_grove_lcd
-        ]
         # app_functions = [
         #     self.measure_dht22,
-        #     self.measure_sense_hat,
-        #     self.display_sense_hat
+        #     self.display_grove_lcd
         # ]
+        app_functions = [
+            self.measure_dht22,
+            self.measure_sense_hat,
+            self.display_sense_hat
+        ]
 
         app_threads = [threading.Thread(target=f) for f in app_functions]
         for t in app_threads:
