@@ -1,0 +1,22 @@
+# Placed in /lib/systemd/system/tuedc.service
+# Run the following commands afterwards:
+# sudo chmod 644 /lib/systemd/system/tuedc.service
+# sudo systemctl daemon-reload
+# sudo systemctl enable tuedc.service
+# sudo systemctl start tuedc.service
+
+[Unit]
+Description=Room Thermometer
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/bin/python3 /home/pi/RasPiProjects/room_thermometer.py
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target
+

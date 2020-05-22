@@ -1,0 +1,22 @@
+# Placed in /lib/systemd/system/tuedc.service
+# Run the following commands afterwards:
+# sudo chmod 644 /lib/systemd/system/tuedc.service
+# sudo systemctl daemon-reload
+# sudo systemctl enable tuedc.service
+# sudo systemctl start tuedc.service
+
+[Unit]
+Description=Update Offset Service for Cometblue
+After=multi-user.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python /home/pi/RasPiProjects/update_offset.py
+Restart=always
+RestartSec=6
+StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target
+
