@@ -3,8 +3,7 @@
 SESSIONNAME="workspace"
 PROJECT_FOLDER="/home/pi/RasPi-Room-Heating"
 
-tmux has-session -t $SESSIONNAME &> /dev/null
-if [ $? != 0 ]
+if [ "tmux has-session -t $SESSIONNAME &> /dev/null" != 0 ]
 
     then
         # new session with name $SESSIONNAME and window 0 named "base"
